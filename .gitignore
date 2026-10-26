@@ -1,0 +1,12 @@
+# Compiled executable
+/texteditor
+
+# Object files
+*.o
+
+# Build directory
+/build/
+
+# Editor and OS files
+.vscode/
+.DS_Store
