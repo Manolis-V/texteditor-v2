@@ -12,6 +12,18 @@ public:
 
     void setLines(const std::vector<std::string>& newLines);
 
+        void insertCharacter(
+        std::size_t row,
+        std::size_t col,
+        char character
+    );
+
+    void insertNewline(std::size_t row, std::size_t col);
+
+    void deleteCharacter(std::size_t row, std::size_t col);
+
+    void backspace(std::size_t& row, std::size_t& col);
+
 private:
     std::vector<std::string> lines;
 };

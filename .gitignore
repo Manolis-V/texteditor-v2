@@ -4,6 +4,9 @@
 # Object files
 *.o
 
+#Text files
+*.txt
+
 # Build directory
 /build/
 

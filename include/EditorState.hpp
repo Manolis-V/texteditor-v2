@@ -17,4 +17,5 @@ struct EditorState {
     EditorMode mode = EditorMode::Normal;
 
     bool running = true;
+    bool modified = false;
 };
