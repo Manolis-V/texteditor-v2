@@ -21,7 +21,8 @@ bool Screen::initialize() {
 
     initialized = true;
 
-    cbreak();
+    // cbreak();  replaced by raw() so Ctrl + s works
+    raw();
     noecho();
     keypad(stdscr, TRUE);
     curs_set(1);

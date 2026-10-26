@@ -45,8 +45,31 @@ bool FileManager::load(const std::string& filename,
 
 bool FileManager::save(const std::string& filename,
                        const TextBuffer& buffer) {
-    // Saving will be implemented in a later stage.                    
-    (void)filename;
-    (void)buffer;
-    return false;
+    std::ofstream file(filename, std::ios::binary | std::ios::trunc);
+
+    if (!file.is_open()) {
+        return false;
+    }
+
+    const auto& lines = buffer.getLines();
+
+    for (std::size_t i = 0; i < lines.size(); ++i) {
+        file.write(lines[i].data(),
+                   static_cast<std::streamsize>(lines[i].size()));
+
+        file.put('\n');
+
+        if (!file) {
+            return false;
+        }
+    }
+
+    file.flush();
+
+    if (!file) {
+        return false;
+    }
+
+    file.close();
+    return !file.fail();
 }

@@ -136,10 +136,46 @@ void Editor::run() {
                 state.cursorX = 0;
                 state.modified = true;
                 break;
-
+            case 19: // Ctrl+S
+                if (fileManager.save(filename, buffer)) {
+                    state.modified = false;
+                }
+                break;
+            case 3: // Ctrl+C
             case 'q':
             case 'Q':
-                state.running = false;
+                if (!state.modified) {
+                    state.running = false;
+                    break;
+                }
+
+                // Ask what to do with unsaved changes.
+                {
+                    const int statusRow = screen.getRows() - 1;
+
+                    move(statusRow, 0);
+                    clrtoeol();
+                    printw("Unsaved changes: save? (y/n/Esc)");
+                    refresh();
+
+                    const int answer = inputHandler.readKey();
+
+                    if (answer == 'y' || answer == 'Y') {
+                        if (fileManager.save(filename, buffer)) {
+                            state.modified = false;
+                            state.running = false;
+                        } else {
+                            move(statusRow, 0);
+                            clrtoeol();
+                            printw("Save failed! Press any key to continue.");
+                            refresh();
+                            inputHandler.readKey();
+                        }
+                    } else if (answer == 'n' || answer == 'N') {
+                        state.running = false;
+                    }
+                    // Esc or any other key cancels quitting.
+                }
                 break;
 
             default:
