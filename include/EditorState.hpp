@@ -10,7 +10,6 @@ enum class EditorMode {
 struct EditorState {
     std::size_t cursorX = 0;
     std::size_t cursorY = 0;
-
     std::size_t rowOffset = 0;
     std::size_t colOffset = 0;
 
@@ -18,4 +17,14 @@ struct EditorState {
 
     bool running = true;
     bool modified = false;
+
+    std::string message;
+
+    void setMessage(const std::string& text) {
+        message = text;
+    }
+
+    void clearMessage() {
+        message.clear();
+    }
 };

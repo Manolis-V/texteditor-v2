@@ -55,6 +55,7 @@ void Editor::run() {
         screen.draw(buffer, state, filename);
 
         const int key = inputHandler.readKey();
+        state.clearMessage();
 
         switch (key) {
             case KEY_RESIZE:
@@ -137,6 +138,9 @@ void Editor::run() {
             case 19: // Ctrl+S
                 if (fileManager.save(filename, buffer)) {
                     state.modified = false;
+                    state.setMessage("File saved successfully.");
+                } else {
+                    state.setMessage("Error: could not save file.");
                 }
                 break;
             case 3: // Ctrl+C
@@ -150,7 +154,7 @@ void Editor::run() {
                     state.modified = true;
                     break;
                 }
-                
+
                 if (!state.modified) {
                     state.running = false;
                     break;
@@ -160,12 +164,11 @@ void Editor::run() {
                 {
                     const int statusRow = screen.getRows() - 1;
 
-                    move(statusRow, 0);
-                    clrtoeol();
-                    printw("Unsaved changes: save? (y/n/Esc)");
-                    refresh();
+                    state.setMessage("Unsaved changes: save? (y/n/Esc)");
+                    screen.draw(buffer, state, filename);
 
                     const int answer = inputHandler.readKey();
+                    state.clearMessage();
 
                     if (answer == 'y' || answer == 'Y') {
                         if (fileManager.save(filename, buffer)) {

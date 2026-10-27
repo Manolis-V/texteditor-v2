@@ -116,8 +116,15 @@ void Screen::draw(
         }
     }
 
-    // Draw status bar.
+    // Draw message / status bar.
     attron(A_REVERSE);
+
+    if (!state.message.empty()) {
+        const int messageRow = rows - 2;
+        move(messageRow, 0);
+        clrtoeol();
+        mvaddnstr(messageRow, 0, state.message.c_str(), cols);
+    }
 
     std::string status =
         filename + 
