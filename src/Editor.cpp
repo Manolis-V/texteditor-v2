@@ -102,39 +102,37 @@ void Editor::run() {
             case KEY_BACKSPACE:
             case 127:
             case 8:
-                if (state.cursorX > 0 || state.cursorY > 0) {
+                if (state.mode == EditorMode::Insert && (state.cursorX > 0 || state.cursorY > 0)) {
                     buffer.backspace(state.cursorY, state.cursorX);
                     state.modified = true;
                 }
                 break;
 
             case KEY_DC:
-                if (state.cursorX < lines[state.cursorY].size()) {
-                    buffer.deleteCharacter(
-                        state.cursorY,
-                        state.cursorX
-                    );
-                    state.modified = true;
-                } else if (state.cursorY + 1 < lines.size()) {
-                    std::size_t nextRow = state.cursorY + 1;
-                    std::size_t nextCol = 0;
+                if (state.mode == EditorMode::Insert) {
+                    if (state.cursorX < lines[state.cursorY].size()) {
+                        buffer.deleteCharacter(state.cursorY, state.cursorX);
+                        state.modified = true;
+                    } else if (state.cursorY + 1 < lines.size()) {
+                        std::size_t nextRow = state.cursorY + 1;
+                        std::size_t nextCol = 0;
 
-                    buffer.backspace(nextRow, nextCol);
-                    state.modified = true;
+                        buffer.backspace(nextRow, nextCol);
+                        state.modified = true;
+                    }
                 }
                 break;
 
             case '\n':
             case '\r':
             case KEY_ENTER:
-                buffer.insertNewline(
-                    state.cursorY,
-                    state.cursorX
-                );
+                if (state.mode == EditorMode::Insert) {
 
-                ++state.cursorY;
-                state.cursorX = 0;
-                state.modified = true;
+                    buffer.insertNewline(state.cursorY, state.cursorX);
+                    ++state.cursorY;
+                    state.cursorX = 0;
+                    state.modified = true;
+                }
                 break;
             case 19: // Ctrl+S
                 if (fileManager.save(filename, buffer)) {
@@ -144,6 +142,15 @@ void Editor::run() {
             case 3: // Ctrl+C
             case 'q':
             case 'Q':
+
+                if (key != 3 && state.mode == EditorMode::Insert) {
+                    buffer.insertCharacter(
+                        state.cursorY, state.cursorX, static_cast<char>(key));
+                    ++state.cursorX;
+                    state.modified = true;
+                    break;
+                }
+                
                 if (!state.modified) {
                     state.running = false;
                     break;
@@ -177,14 +184,101 @@ void Editor::run() {
                     // Esc or any other key cancels quitting.
                 }
                 break;
+            
+            case 27: // Esc
+                state.mode = EditorMode::Normal;
+                break;
+
+            case 'i':
+                if (state.mode == EditorMode::Normal) {
+                    state.mode = EditorMode::Insert;
+                } else {
+                    buffer.insertCharacter(state.cursorY, state.cursorX, 'i');
+                    ++state.cursorX;
+                    state.modified = true;
+                }
+                break;
+            
+            case 'h':
+                if (state.mode == EditorMode::Normal) {
+                    if (state.cursorX > 0) {
+                        --state.cursorX;
+                    } else if (state.cursorY > 0) {
+                        --state.cursorY;
+                        state.cursorX = lines[state.cursorY].size();
+                    }
+                } else {
+                    buffer.insertCharacter(state.cursorY, state.cursorX, 'h');
+                    ++state.cursorX;
+                    state.modified = true;
+                }
+                break;
+
+            case 'j':
+                if (state.mode == EditorMode::Normal) {
+                    if (state.cursorY + 1 < lines.size()) {
+                        ++state.cursorY;
+                        state.cursorX = std::min(
+                            state.cursorX, lines[state.cursorY].size());
+                    }
+                } else {
+                    buffer.insertCharacter(state.cursorY, state.cursorX, 'j');
+                    ++state.cursorX;
+                    state.modified = true;
+                }
+                break;
+
+            case 'k':
+                if (state.mode == EditorMode::Normal) {
+                    if (state.cursorY > 0) {
+                        --state.cursorY;
+                        state.cursorX = std::min(
+                            state.cursorX, lines[state.cursorY].size());
+                    }
+                } else {
+                    buffer.insertCharacter(state.cursorY, state.cursorX, 'k');
+                    ++state.cursorX;
+                    state.modified = true;
+                }
+                break;
+
+            case 'l':
+                if (state.mode == EditorMode::Normal) {
+                    if (state.cursorX < lines[state.cursorY].size()) {
+                        ++state.cursorX;
+                    } else if (state.cursorY + 1 < lines.size()) {
+                        ++state.cursorY;
+                        state.cursorX = 0;
+                    }
+                } else {
+                    buffer.insertCharacter(state.cursorY, state.cursorX, 'l');
+                    ++state.cursorX;
+                    state.modified = true;
+                }
+                break;
+
+            case 'x':
+                if (state.mode == EditorMode::Normal) {
+                    if (state.cursorX < lines[state.cursorY].size()) {
+                        buffer.deleteCharacter(state.cursorY, state.cursorX);
+                        state.modified = true;
+                    }
+                } else {
+                    buffer.insertCharacter(state.cursorY, state.cursorX, 'x');
+                    ++state.cursorX;
+                    state.modified = true;
+                }
+                break;
 
             default:
-                if (key >= 32 && key <= 126 &&
+                if (state.mode == EditorMode::Insert &&
+                    key >= 32 && key <= 126 &&
                     std::isprint(static_cast<unsigned char>(key))) {
+                    
                     buffer.insertCharacter(
-                        state.cursorY,
-                        state.cursorX,
-                        static_cast<char>(key)
+                    state.cursorY,
+                    state.cursorX,
+                    static_cast<char>(key)
                     );
 
                     ++state.cursorX;
