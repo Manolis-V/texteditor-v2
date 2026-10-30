@@ -12,6 +12,7 @@ SOURCES = \
 	src/FileManager.cpp \
 	src/Screen.cpp \
 	src/InputHandler.cpp \
+	src/EditorHelper.cpp \
 
 OBJECTS = $(SOURCES:.cpp=.o)
 

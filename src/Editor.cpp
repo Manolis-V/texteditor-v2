@@ -7,6 +7,42 @@
 Editor::Editor(const std::string& filename)
     : filename(filename) {}
 
+void Editor::quit(){
+
+    if (!state.modified) {
+        state.running = false;
+        return;
+    }
+
+    // Ask what to do with unsaved changes.
+    // {
+        const int statusRow = screen.getRows() - 1;
+
+        state.setMessage("Unsaved changes: save? (y/n/Esc)");
+        screen.draw(buffer, state, filename);
+
+        const int answer = inputHandler.readKey();
+        state.clearMessage();
+
+        if (answer == 'y' || answer == 'Y') {
+            if (fileManager.save(filename, buffer)) {
+                state.modified = false;
+                state.running = false;
+            } else {
+                move(statusRow, 0);
+                clrtoeol();
+                printw("Save failed! Press any key to continue.");
+                refresh();
+                inputHandler.readKey();
+            }
+        } else if (answer == 'n' || answer == 'N') {
+            state.running = false;
+        }
+        // Esc or any other key cancels quitting.
+    // }
+    return;
+}
+
 void Editor::run() {
     if (!fileManager.load(filename, buffer)) {
         return;
@@ -147,6 +183,7 @@ void Editor::run() {
             case 127:
             case 8:
                 if (state.mode == EditorMode::Insert && (state.cursorX > 0 || state.cursorY > 0)) {
+                    saveSnapshot();
                     buffer.backspace(state.cursorY, state.cursorX);
                     state.modified = true;
                 }
@@ -154,6 +191,7 @@ void Editor::run() {
 
             case KEY_DC:
                 if (state.mode == EditorMode::Insert) {
+                    saveSnapshot();
                     if (state.cursorX < lines[state.cursorY].size()) {
                         buffer.deleteCharacter(state.cursorY, state.cursorX);
                         state.modified = true;
@@ -172,6 +210,7 @@ void Editor::run() {
             case KEY_ENTER:
                 if (state.mode == EditorMode::Insert) {
 
+                    saveSnapshot();
                     buffer.insertNewline(state.cursorY, state.cursorX);
                     ++state.cursorY;
                     state.cursorX = 0;
@@ -189,48 +228,25 @@ void Editor::run() {
             case 3: // Ctrl+C
             case 'q':
             case 'Q':
-
                 if (key != 3 && state.mode == EditorMode::Insert) {
-                    buffer.insertCharacter(
-                        state.cursorY, state.cursorX, static_cast<char>(key));
+                    saveSnapshot();
+                    buffer.insertCharacter(state.cursorY, state.cursorX, static_cast<char>(key));
                     ++state.cursorX;
                     state.modified = true;
                     break;
-                }
-
-                if (!state.modified) {
-                    state.running = false;
-                    break;
-                }
-
-                // Ask what to do with unsaved changes.
-                {
-                    const int statusRow = screen.getRows() - 1;
-
-                    state.setMessage("Unsaved changes: save? (y/n/Esc)");
-                    screen.draw(buffer, state, filename);
-
-                    const int answer = inputHandler.readKey();
-                    state.clearMessage();
-
-                    if (answer == 'y' || answer == 'Y') {
-                        if (fileManager.save(filename, buffer)) {
-                            state.modified = false;
-                            state.running = false;
-                        } else {
-                            move(statusRow, 0);
-                            clrtoeol();
-                            printw("Save failed! Press any key to continue.");
-                            refresh();
-                            inputHandler.readKey();
-                        }
-                    } else if (answer == 'n' || answer == 'N') {
-                        state.running = false;
-                    }
-                    // Esc or any other key cancels quitting.
+                } else {
+                    quit();
                 }
                 break;
             
+            case 26:
+                undo();
+                break;
+            
+            case 25:
+                redo();
+                break;
+
             case 27: // Esc
                 state.mode = EditorMode::Normal;
                 break;
@@ -239,6 +255,7 @@ void Editor::run() {
                 if (state.mode == EditorMode::Normal) {
                     state.mode = EditorMode::Insert;
                 } else {
+                    saveSnapshot();
                     buffer.insertCharacter(state.cursorY, state.cursorX, 'i');
                     ++state.cursorX;
                     state.modified = true;
@@ -254,6 +271,7 @@ void Editor::run() {
                         state.cursorX = lines[state.cursorY].size();
                     }
                 } else {
+                    saveSnapshot();
                     buffer.insertCharacter(state.cursorY, state.cursorX, 'h');
                     ++state.cursorX;
                     state.modified = true;
@@ -268,6 +286,7 @@ void Editor::run() {
                             state.cursorX, lines[state.cursorY].size());
                     }
                 } else {
+                    saveSnapshot();
                     buffer.insertCharacter(state.cursorY, state.cursorX, 'j');
                     ++state.cursorX;
                     state.modified = true;
@@ -282,6 +301,7 @@ void Editor::run() {
                             state.cursorX, lines[state.cursorY].size());
                     }
                 } else {
+                    saveSnapshot();
                     buffer.insertCharacter(state.cursorY, state.cursorX, 'k');
                     ++state.cursorX;
                     state.modified = true;
@@ -297,6 +317,7 @@ void Editor::run() {
                         state.cursorX = 0;
                     }
                 } else {
+                    saveSnapshot();
                     buffer.insertCharacter(state.cursorY, state.cursorX, 'l');
                     ++state.cursorX;
                     state.modified = true;
@@ -306,10 +327,12 @@ void Editor::run() {
             case 'x':
                 if (state.mode == EditorMode::Normal) {
                     if (state.cursorX < lines[state.cursorY].size()) {
+                        saveSnapshot();
                         buffer.deleteCharacter(state.cursorY, state.cursorX);
                         state.modified = true;
                     }
                 } else {
+                    saveSnapshot();
                     buffer.insertCharacter(state.cursorY, state.cursorX, 'x');
                     ++state.cursorX;
                     state.modified = true;
@@ -321,6 +344,7 @@ void Editor::run() {
                     key >= 32 && key <= 126 &&
                     std::isprint(static_cast<unsigned char>(key))) {
                     
+                    saveSnapshot();
                     buffer.insertCharacter(
                     state.cursorY,
                     state.cursorX,
