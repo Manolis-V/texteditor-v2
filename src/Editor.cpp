@@ -100,6 +100,49 @@ void Editor::run() {
                 }
                 break;
 
+            case KEY_HOME:
+                state.cursorX = 0;
+                break;
+
+            case KEY_END:
+                state.cursorX = buffer.getLines()[state.cursorY].length();
+                break;
+
+            case KEY_SHOME: // Shift + Home 
+                state.cursorX = 0;
+                state.cursorY = 0;
+                break;
+
+            case KEY_SEND: // Shift + End 
+                state.cursorY = buffer.lineCount() - 1;
+                state.cursorX = buffer.getLines()[state.cursorY].length();
+                break;
+
+            case KEY_PPAGE: // Page Up
+                if (state.cursorY > visibleRows) {
+                    state.cursorY -= visibleRows;
+                } else {
+                    state.cursorY = 0;
+                }
+
+                state.cursorX = std::min(
+                    state.cursorX,
+                    buffer.getLines()[state.cursorY].length()
+                );
+                break;
+
+            case KEY_NPAGE: // Page Down
+                state.cursorY = std::min(
+                    state.cursorY + visibleRows,
+                    buffer.lineCount() - 1
+                );
+
+                state.cursorX = std::min(
+                    state.cursorX,
+                    buffer.getLines()[state.cursorY].length()
+                );
+                break;
+
             case KEY_BACKSPACE:
             case 127:
             case 8:

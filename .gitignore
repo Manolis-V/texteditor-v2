@@ -5,6 +5,7 @@
 *.o
 
 #Text files
+/textfiles
 *.txt
 
 # Build directory
