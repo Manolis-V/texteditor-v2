@@ -23,7 +23,6 @@ public:
 
 private:
     std::string filename;
-    bool insertGroupActive = false;
 
     EditorState state;
     TextBuffer buffer;
@@ -36,6 +35,8 @@ private:
     void redo();
     void quit();
     void insertKey(int key);
+
+    bool insertGroupActive = false;
     std::vector<EditorSnapshot> undoHistory;
     std::vector<EditorSnapshot> redoHistory;
 };

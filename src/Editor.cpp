@@ -42,13 +42,25 @@ void Editor::quit(){
 }
 
 void Editor::insertKey(int key){
-    if (!insertGroupActive) {
-        saveSnapshot();
-        insertGroupActive = true;
-    }
-    if (key == 32){
+    // if (!insertGroupActive) {
+    //     saveSnapshot();
+    //     insertGroupActive = true;
+    // }
+    // if (key == 32){
+    //     insertGroupActive = false;
+    // }
+
+    if (key == 32) {
         insertGroupActive = false;
+        saveSnapshot();
     }
+    else {
+        if (!insertGroupActive) {
+            saveSnapshot();
+            insertGroupActive = true;
+        }
+    }    
+
 
     buffer.insertCharacter(
     state.cursorY,
@@ -116,6 +128,7 @@ void Editor::run() {
                 break;
 
             case KEY_LEFT:
+                insertGroupActive = false;
                 if (state.cursorX > 0) {
                     --state.cursorX;
                 } else if (state.cursorY > 0) {
@@ -125,6 +138,7 @@ void Editor::run() {
                 break;
 
             case KEY_RIGHT:
+                insertGroupActive = false;
                 if (state.cursorX < lines[state.cursorY].size()) {
                     ++state.cursorX;
                 } else if (state.cursorY + 1 < lines.size()) {
@@ -134,6 +148,7 @@ void Editor::run() {
                 break;
 
             case KEY_UP:
+                insertGroupActive = false;
                 if (state.cursorY > 0) {
                     --state.cursorY;
                     state.cursorX = std::min(
@@ -144,6 +159,7 @@ void Editor::run() {
                 break;
 
             case KEY_DOWN:
+                insertGroupActive = false;
                 if (state.cursorY + 1 < lines.size()) {
                     ++state.cursorY;
                     state.cursorX = std::min(
@@ -154,24 +170,29 @@ void Editor::run() {
                 break;
 
             case KEY_HOME:
+                insertGroupActive = false;
                 state.cursorX = 0;
                 break;
 
             case KEY_END:
+                insertGroupActive = false;
                 state.cursorX = buffer.getLines()[state.cursorY].length();
                 break;
 
             case KEY_SHOME: // Shift + Home 
+                insertGroupActive = false;
                 state.cursorX = 0;
                 state.cursorY = 0;
                 break;
 
-            case KEY_SEND: // Shift + End 
+            case KEY_SEND: // Shift + End
+                insertGroupActive = false;
                 state.cursorY = buffer.lineCount() - 1;
                 state.cursorX = buffer.getLines()[state.cursorY].length();
                 break;
 
             case KEY_PPAGE: // Page Up
+                insertGroupActive = false;
                 if (state.cursorY > visibleRows) {
                     state.cursorY -= visibleRows;
                 } else {
@@ -185,6 +206,7 @@ void Editor::run() {
                 break;
 
             case KEY_NPAGE: // Page Down
+                insertGroupActive = false;
                 state.cursorY = std::min(
                     state.cursorY + visibleRows,
                     buffer.lineCount() - 1
@@ -200,6 +222,7 @@ void Editor::run() {
             case 127:
             case 8:
                 if (state.mode == EditorMode::Insert && (state.cursorX > 0 || state.cursorY > 0)) {
+                    insertGroupActive = false;
                     saveSnapshot();
                     buffer.backspace(state.cursorY, state.cursorX);
                     state.modified = true;
@@ -208,6 +231,8 @@ void Editor::run() {
 
             case KEY_DC:
                 if (state.mode == EditorMode::Insert) {
+                    insertGroupActive = false;
+                    saveSnapshot();
                     if (state.cursorX < lines[state.cursorY].size()) {
                         buffer.deleteCharacter(state.cursorY, state.cursorX);
                         state.modified = true;
@@ -225,6 +250,7 @@ void Editor::run() {
             case '\r':
             case KEY_ENTER:
                 if (state.mode == EditorMode::Insert) {
+                    insertGroupActive = false;
                     saveSnapshot();
                     buffer.insertNewline(state.cursorY, state.cursorX);
                     ++state.cursorY;
@@ -260,17 +286,13 @@ void Editor::run() {
                 break;
 
             case 27: // Esc
+                insertGroupActive = false;
                 state.mode = EditorMode::Normal;
                 break;
 
             case 'i':
                 if (state.mode == EditorMode::Normal) {
                     state.mode = EditorMode::Insert;
-
-                    if (key != ERR && !std::isprint(key)) {
-                        insertGroupActive = false;
-                    }
-
                 } else {
                     insertKey(key);
                 }
