@@ -17,7 +17,7 @@ void Editor::quit(){
     const int statusRow = screen.getRows() - 1;
 
     state.setMessage("Unsaved changes: save? (y/n/Esc)");
-    screen.draw(buffer, state, filename);
+    screen.draw(buffer, state, filename, searchQuery);
 
     const int answer = inputHandler.readKey();
     state.clearMessage();
@@ -72,6 +72,154 @@ void Editor::insertKey(int key){
     state.modified = true;
 }
 
+void Editor::search() {
+    bool searching = true;
+    escape_searching = false;
+    searchQuery.clear();
+    state.setMessage("Search: ");
+    screen.draw(buffer, state, filename, searchQuery);
+
+    while (searching) {
+        int ch = inputHandler.readKey();
+
+        if (ch == 27) { // Escape
+            searching = false;
+            escape_searching = true;
+            searchQuery.clear();
+            state.setMessage("Exiting search");
+            screen.draw(buffer, state, filename, searchQuery);
+            return;
+        } else if (ch == '\n' || ch == KEY_ENTER) {
+            searching = false;
+            state.clearMessage();
+
+            if (!searchQuery.empty()) {
+                findNext();
+            }
+            return;
+        }
+        else if (ch == KEY_BACKSPACE || ch == 127 || ch == 8) {
+            if (!searchQuery.empty()) {
+                searchQuery.pop_back();
+            }
+        }
+        else if (ch >= 32 && ch <= 126) {
+            searchQuery += static_cast<char>(ch);
+        }
+
+        state.setMessage("Search: " + searchQuery);
+        screen.draw(buffer, state, filename, searchQuery);
+    }
+}
+
+void Editor::findNext() {
+    const auto& lines = buffer.getLines();
+
+    for (std::size_t y = state.cursorY; y < lines.size(); ++y) {
+        std::size_t startX = (y == state.cursorY)
+                                 ? state.cursorX + 1
+                                 : 0;
+
+        std::size_t pos = lines[y].find(searchQuery, startX);
+
+        if (pos != std::string::npos) {
+            state.cursorY = y;
+            state.cursorX = pos;
+
+            int visibleRows = screen.getRows() - 2;
+            if (state.cursorY < state.rowOffset) {
+                state.rowOffset = state.cursorY;
+            }
+            if (state.cursorY >= state.rowOffset + visibleRows) {
+                state.rowOffset = state.cursorY - visibleRows + 1;
+            }
+            state.setMessage("Match found.");
+            return;
+        }
+    }
+
+    // Wrap around: search from the beginning
+    for (std::size_t y = 0; y <= state.cursorY; ++y) {
+        std::size_t pos = lines[y].find(searchQuery);
+
+        if (pos != std::string::npos) {
+            state.cursorY = y;
+            state.cursorX = pos;
+            int visibleRows = screen.getRows() - 2;
+            if (state.cursorY < state.rowOffset) {
+                state.rowOffset = state.cursorY;
+            }
+            if (state.cursorY >= state.rowOffset + visibleRows) {
+                state.rowOffset = state.cursorY - visibleRows + 1;
+            }
+            state.setMessage("Search wrapped.");
+            screen.draw(buffer, state, filename, searchQuery);
+            return;
+        }
+    }
+
+    state.setMessage("Pattern not found.");
+}
+void Editor::findPrevious() {
+    const auto& lines = buffer.getLines();
+
+    for (int y = static_cast<int>(state.cursorY); y >= 0; --y) {
+        const std::string& line = lines[y];
+
+        std::size_t startX;
+
+        if (static_cast<std::size_t>(y) == state.cursorY) {
+            if (state.cursorX == 0) {
+                continue;
+            }
+            startX = state.cursorX - 1;
+        } else {
+            startX = line.size();
+        }
+
+        std::size_t pos = line.rfind(searchQuery, startX);
+
+        if (pos != std::string::npos) {
+            state.cursorY = static_cast<std::size_t>(y);
+            state.cursorX = pos;
+
+            int visibleRows = screen.getRows() - 2;
+            if (state.cursorY < state.rowOffset) {
+                state.rowOffset = state.cursorY;
+            }
+            if (state.cursorY >= state.rowOffset + visibleRows) {
+                state.rowOffset = state.cursorY - visibleRows + 1;
+            }
+            state.setMessage("Match found.");
+            return;
+        }
+    }
+
+    // Wrap around: search backwards from the end
+    for (int y = static_cast<int>(lines.size()) - 1;
+         y >= static_cast<int>(state.cursorY); --y) {
+
+        std::size_t pos = lines[y].rfind(searchQuery);
+
+        if (pos != std::string::npos) {
+            state.cursorY = static_cast<std::size_t>(y);
+            state.cursorX = pos;
+            int visibleRows = screen.getRows() - 2;
+            if (state.cursorY < state.rowOffset) {
+                state.rowOffset = state.cursorY;
+            }
+            if (state.cursorY >= state.rowOffset + visibleRows) {
+                state.rowOffset = state.cursorY - visibleRows + 1;
+            }
+            state.setMessage("Search wrapped.");
+            screen.draw(buffer, state, filename, searchQuery);
+            return;
+        }
+    }
+
+    state.setMessage("Pattern not found.");
+}
+
 void Editor::run() {
     if (!fileManager.load(filename, buffer)) {
         return;
@@ -117,7 +265,7 @@ void Editor::run() {
             state.colOffset = state.cursorX - textWidth + 1;
         }
 
-        screen.draw(buffer, state, filename);
+        screen.draw(buffer, state, filename, searchQuery);
 
         const int key = inputHandler.readKey();
         state.clearMessage();
@@ -285,9 +433,41 @@ void Editor::run() {
                 redo();
                 break;
 
+            case 6: // Ctrl+f
+                if (state.mode == EditorMode::Normal) {
+                    insertGroupActive = false;
+                    search();
+                } else {
+                    state.setMessage("Exit Insert mode first.");
+                }
+                break;
+
+            case 'm':
+                if (state.mode == EditorMode::Normal && !searchQuery.empty()) {
+                    insertGroupActive = false;
+                    findNext();
+                } else if (state.mode == EditorMode::Insert){
+                    insertKey(key);
+                }
+                break;
+
+            case 'n': // Find previous
+                if (state.mode == EditorMode::Normal && !searchQuery.empty()) {
+                    insertGroupActive = false;
+                    findPrevious();
+                } else if (state.mode == EditorMode::Insert){
+                    insertKey(key);
+                }
+                break;
+
             case 27: // Esc
                 insertGroupActive = false;
                 state.mode = EditorMode::Normal;
+                if(!escape_searching){
+                    escape_searching = true;
+                    searchQuery.clear();
+                    screen.draw(buffer, state, filename, searchQuery);
+                }
                 break;
 
             case 'i':

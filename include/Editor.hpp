@@ -35,7 +35,12 @@ private:
     void redo();
     void quit();
     void insertKey(int key);
+    void search();
+    void findNext();
+    void findPrevious();
 
+    std::string searchQuery;
+    bool escape_searching = false;
     bool insertGroupActive = false;
     std::vector<EditorSnapshot> undoHistory;
     std::vector<EditorSnapshot> redoHistory;

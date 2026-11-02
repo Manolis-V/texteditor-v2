@@ -20,6 +20,10 @@ bool Screen::initialize() {
     }
 
     initialized = true;
+    
+    start_color();
+    init_pair(1, COLOR_BLACK, COLOR_YELLOW);
+    init_pair(2, COLOR_BLACK, COLOR_GREEN);
 
     // cbreak();  replaced by raw() so Ctrl + s works
     raw();
@@ -73,7 +77,8 @@ int Screen::getCols() const {
 void Screen::draw(
     const TextBuffer& buffer,
     const EditorState& state,
-    const std::string& filename
+    const std::string& filename,
+    const std::string& searchQuery
 ) {
     if (!initialized || rows <= 0 || cols <= 0) {
         return;
@@ -107,12 +112,47 @@ void Screen::draw(
                 line.substr(state.colOffset,
                             static_cast<std::size_t>(textWidth));
 
-            mvaddnstr(
-                screenY,
-                gutterWidth,
-                visible.c_str(),
-                textWidth
-            );
+            if (searchQuery.empty()) {
+                mvaddnstr(screenY, gutterWidth, visible.c_str(), textWidth);
+            } else {
+                std::size_t pos = 0;
+
+                while (pos < visible.size()) {
+                    std::size_t match = visible.find(searchQuery, pos);
+
+                    if (match == std::string::npos) {
+                        mvaddnstr(screenY, gutterWidth + pos,
+                                visible.c_str() + pos,
+                                visible.size() - pos);
+                        break;
+                    }
+
+                    // Print normal text before the match
+                    if (match > pos) {
+                        mvaddnstr(screenY, gutterWidth + pos,
+                                visible.c_str() + pos,
+                                match - pos);
+                    }
+
+                    // Convert visible position to document position
+                    std::size_t documentX = match + state.colOffset;
+
+                    // Check whether this is the selected match
+                    bool selected =
+                        state.cursorY == state.rowOffset + screenY - 0 /* adjust if needed */ &&
+                        state.cursorX == documentX;
+
+                    attron(COLOR_PAIR(selected ? 2 : 1));
+
+                    mvaddnstr(screenY, gutterWidth + match,
+                            visible.c_str() + match,
+                            searchQuery.size());
+
+                    attroff(COLOR_PAIR(selected ? 2 : 1));
+
+                    pos = match + searchQuery.size();
+                }
+            }
         }
     }
 

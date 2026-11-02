@@ -21,7 +21,8 @@ public:
     void draw(
         const TextBuffer& buffer,
         const EditorState& state,
-        const std::string& filename
+        const std::string& filename,
+        const std::string& searchQuery
     );
 
     int getRows() const;
