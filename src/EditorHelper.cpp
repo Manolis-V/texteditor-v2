@@ -215,3 +215,36 @@ void Editor::findPrevious() {
 
     state.setMessage("Pattern not found.");
 }
+
+bool Editor::braceIndentation(){
+    const auto& lines = buffer.getLines();
+    const std::string& currentLine = lines[state.cursorY];
+
+    bool emptyLine = (currentLine.find_first_not_of(" \t")) == (std::string::npos);
+
+    bool hasFourSpaces = (state.cursorX >= 4) && (currentLine.substr(0, 4) == "    ");
+
+    bool cursorAtEnd = (state.cursorX) == (currentLine.size());
+
+    if (emptyLine && hasFourSpaces && cursorAtEnd) {
+        insertGroupActive = false;
+        saveSnapshot();
+
+        // Remove four indentation spaces
+        for (int i = 0; i < 4; ++i) {
+            buffer.backspace(state.cursorY, state.cursorX);
+        }
+
+        // Insert closing brace
+        buffer.insertCharacter(
+            state.cursorY,
+            state.cursorX,
+            '}'
+        );
+
+        ++state.cursorX;
+        state.modified = true;
+        return true;
+    }
+    return false;
+}

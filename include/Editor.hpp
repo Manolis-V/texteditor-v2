@@ -38,6 +38,7 @@ private:
     void search();
     void findNext();
     void findPrevious();
+    bool braceIndentation();
 
     std::string searchQuery;
     bool escape_searching = false;

@@ -48,6 +48,10 @@ void Editor::insertKey(int key){
     //     insertGroupActive = false;
     // }
 
+    if (key == '}') {
+        if (braceIndentation()) return;
+    }
+    
     if (key == 32) {
         insertGroupActive = false;
         saveSnapshot();
@@ -57,12 +61,12 @@ void Editor::insertKey(int key){
             saveSnapshot();
             insertGroupActive = true;
         }
-    }    
+    }
 
     buffer.insertCharacter(
-    state.cursorY,
-    state.cursorX,
-    static_cast<char>(key)
+        state.cursorY,
+        state.cursorX,
+        static_cast<char>(key)
     );
 
     ++state.cursorX;
@@ -249,9 +253,74 @@ void Editor::run() {
                 if (state.mode == EditorMode::Insert) {
                     insertGroupActive = false;
                     saveSnapshot();
-                    buffer.insertNewline(state.cursorY, state.cursorX);
-                    ++state.cursorY;
-                    state.cursorX = 0;
+                    // Get the current line before inserting the newline
+                    const std::string& currentLine = lines[state.cursorY];
+
+                    // Check whether cursor is between {}
+                    bool betweenBraces =
+                        state.cursorX > 0 &&
+                        state.cursorX < currentLine.size() &&
+                        currentLine[state.cursorX - 1] == '{' &&
+                        currentLine.back() == '}';
+                        // currentLine[state.cursorX] == '}';
+
+                    // Count leading spaces and tabs
+                    std::string indentation;
+                    for (char ch : currentLine) {
+                        if (ch == ' ' || ch == '\t') {
+                            indentation += ch;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    if (betweenBraces) {
+                        // Preserve the outer indentation
+                        std::string innerIndentation = indentation + "    ";
+
+                        buffer.insertNewline(state.cursorY, state.cursorX);
+                        ++state.cursorY;
+                        state.cursorX = 0;
+
+                        // Insert inner indentation
+                        for (char ch : innerIndentation) {
+                            buffer.insertCharacter(state.cursorY, state.cursorX, ch);
+                            ++state.cursorX;
+                        }
+
+                        // Insert another newline before the closing brace
+                        buffer.insertNewline(state.cursorY, state.cursorX);
+                        ++state.cursorY;
+                        state.cursorX = 0;
+
+                        // Restore outer indentation
+                        for (char ch : indentation) {
+                            buffer.insertCharacter(state.cursorY, state.cursorX, ch);
+                            ++state.cursorX;
+                        }
+
+                        // Return cursor to the inner line
+                        --state.cursorY;
+                        state.cursorX = innerIndentation.size();
+                    } else {
+                        // Check if the line ends with an opening brace
+                        //(!currentLine.empty() && currentLine.back() == '{')
+                        if ((state.cursorX > 0) && (currentLine[state.cursorX - 1] == '{')) {
+                            indentation += "    ";
+                        }
+
+                        
+                        buffer.insertNewline(state.cursorY, state.cursorX);
+                        ++state.cursorY;
+                        state.cursorX = 0;
+
+                        // Insert the calculated indentation
+                        for (char ch : indentation) {
+                            buffer.insertCharacter(state.cursorY, state.cursorX, ch);
+                            ++state.cursorX;
+                        }
+                    }
+                    
                     state.modified = true;
                 }
                 break;
